@@ -64,7 +64,7 @@
 			<td>{{profesor.nombre}}</td>
 			<td>{{profesor.apellidos[0]}}</td>
 			<td>{{profesor.apellidos[1]}}</td>
-			<td><span v-for="clase in profesor.clases" :key="clase">{{this.clases.find(_clase => _clase._id === clase).nombre}}<br/></span></td>
+			<td><span v-for="clase in profesor.clases" :key="clase">{{this.clases.find(_clase => _clase._id === clase) && this.clases.find(_clase => _clase._id === clase).nombre}}<br/></span></td>
 			<td>
 				<button class="btn btn-primary" @click="editarProfesor({...profesor, apellidos: [...profesor.apellidos]})">🖊 Editar</button>
 				<!-- <button class="btn btn-danger" @click="eliminarAlumno(alumno._id, alumno.clase)">❌ Eliminar</button> -->
