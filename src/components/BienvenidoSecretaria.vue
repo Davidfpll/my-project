@@ -49,6 +49,7 @@
 		<thead>
 			<tr>
 			<th>Usuario</th>
+			<th>Foto</th>
 			<th>Nombre</th>
 			<th>Primer Apellido</th>
 			<th>Segundo Apellido</th>
@@ -59,6 +60,7 @@
 		<tbody>
 			<tr v-for="profesor in profesores" :key="profesor._id">
 			<td>{{profesor.usuario}}</td>
+			<td><img width="150" v-if="!!profesor.foto" :src="profesor.foto"></td>
 			<td>{{profesor.nombre}}</td>
 			<td>{{profesor.apellidos[0]}}</td>
 			<td>{{profesor.apellidos[1]}}</td>
@@ -174,7 +176,28 @@ export default {
         .then(JSON.parse)
         .catch(error => console.log('error', error));
 
-		this.profesores = profesores.filter(_profesor => _profesor.rol === 'tutor')
+		const _profesores = profesores.filter(_profesor => _profesor.rol === 'tutor')
+
+		const __profesores = []
+        for await(const _profesor of _profesores) {
+
+          if ( _profesor.foto ) {
+            const foto = await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${_profesor._id}`,{
+              method: 'GET',
+              redirect: 'follow'
+            })
+            .then(response => response.blob())
+            .then(myBlob => URL.createObjectURL(myBlob))
+            .catch(error => console.log('error', error));
+
+            __profesores.push({..._profesor, foto: foto})
+          } else {
+            __profesores.push({..._profesor})
+          }
+          
+        }
+
+		this.profesores = __profesores
 	},
 	async buscaClases (){
 		const clases = await fetch(`${process.env.VUE_APP_URL_BACK}/clase`,{

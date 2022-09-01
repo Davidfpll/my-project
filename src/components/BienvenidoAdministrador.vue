@@ -44,11 +44,13 @@
 			</div>
 		</div>
 	</div>
+	<input type="file" @change="subirFoto" ref="file" style="display: none;" />
 	<div class="overflow">
 		<table class="table">
 		<thead>
 			<tr>
 			<th>Usuario</th>
+			<th>Foto</th>
 			<th>Nombre</th>
 			<th>Primer Apellido</th>
 			<th>Segundo Apellido</th>
@@ -59,12 +61,14 @@
 		<tbody>
 			<tr v-for="profesor in profesores" :key="profesor._id">
 			<td>{{profesor.usuario}}</td>
+			<td><img width="150" v-if="!!profesor.foto" :src="profesor.foto"></td>
 			<td>{{profesor.nombre}}</td>
 			<td>{{profesor.apellidos[0]}}</td>
 			<td>{{profesor.apellidos[1]}}</td>
 			<td><span v-for="clase in profesor.clases" :key="clase">{{this.clases.find(_clase => _clase._id === clase).nombre}}<br/></span></td>
 			<td>
 				<button class="btn btn-primary" @click="editarProfesor({...profesor, apellidos: [...profesor.apellidos]})">🖊 Editar</button>
+				<button class="btn btn-warning" @click="cambiarImagen(profesor._id)">📷 Foto</button>
 				<button class="btn btn-danger" @click="eliminarProfesor(profesor._id)">❌ Eliminar</button>
 			</td>
 			</tr>
@@ -134,6 +138,7 @@ export default {
 		profesor: {},
 		profesores: [],
 		anadiendoProfesor: false,
+		imagenOid: null,
     }
   },
   beforeMount(){
@@ -173,7 +178,28 @@ export default {
         .then(JSON.parse)
         .catch(error => console.log('error', error));
 
-		this.profesores = profesores.filter(_profesor => _profesor.rol === 'tutor')
+		const _profesores = profesores.filter(_profesor => _profesor.rol === 'tutor')
+
+		const __profesores = []
+        for await(const _profesor of _profesores) {
+
+          if ( _profesor.foto ) {
+            const foto = await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${_profesor._id}`,{
+              method: 'GET',
+              redirect: 'follow'
+            })
+            .then(response => response.blob())
+            .then(myBlob => URL.createObjectURL(myBlob))
+            .catch(error => console.log('error', error));
+
+            __profesores.push({..._profesor, foto: foto})
+          } else {
+            __profesores.push({..._profesor})
+          }
+          
+        }
+
+		this.profesores = __profesores
 	},
 	async buscaClases (){
 		const clases = await fetch(`${process.env.VUE_APP_URL_BACK}/clase`,{
@@ -265,6 +291,26 @@ export default {
 		.catch(error => console.log('error', error));
 
 		if ( eliminado ) return window.location.reload()
+	},
+	cambiarImagen(oid){
+		this.imagenOid = oid
+		this.$refs.file.click()
+	},
+	async subirFoto(event){
+
+		const formData = new FormData();
+		formData.append("archivo", event.target.files[0]);
+        // formData.append('archivo', event.target.files[0]);
+        const headers = {
+			method: 'POST',
+			body: formData,
+			redirect: 'follow'
+		};
+
+		await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${this.imagenOid}`, headers);
+		
+		this.imagenOid = null;
+		return window.location.reload()
 	},
 	async editarClase(clase){
 		this.anadiendoClase = true;

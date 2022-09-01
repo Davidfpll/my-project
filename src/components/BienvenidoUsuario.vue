@@ -8,6 +8,7 @@
         <thead>
           <tr>
             <th>Nombre</th>
+            <th>Foto</th>
             <th>Clase</th>
             <th>Acciones</th>
           </tr>
@@ -15,6 +16,7 @@
         <tbody>
           <tr v-for="alumno in alumnos" :key="alumno._id">
             <td>{{alumno.nombre}}</td>
+            <td><img width="150" v-if="!!alumno.foto" :src="alumno.foto"></td>
             <td>{{alumno.clase.nombre}}</td>
             <td>
               <button class="btn btn-primary" @click="verAlumno(alumno._id)">👁‍🗨 Ver Alumno</button>
@@ -66,10 +68,28 @@ export default {
 
         const alumnos = await this.buscarAlumnosPorClase(claseOid);
 
-        this.alumnos = alumnos.map(alumno => { 
+        const _alumnos = []
+        for await(const alumno of alumnos) {
+
           alumno.clase = clase;
-          return alumno
-        });
+
+          if ( alumno.foto ) {
+            const foto = await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${alumno._id}`,{
+              method: 'GET',
+              redirect: 'follow'
+            })
+            .then(response => response.blob())
+            .then(myBlob => URL.createObjectURL(myBlob))
+            .catch(error => console.log('error', error));
+
+            _alumnos.push({...alumno, foto: foto })
+          } else {
+            _alumnos.push({...alumno})
+          }
+          
+        }
+
+        this.alumnos = _alumnos
       }
       
     },
