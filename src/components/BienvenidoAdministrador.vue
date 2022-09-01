@@ -309,6 +309,19 @@ export default {
 
 		await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${this.imagenOid}`, headers);
 		
+		await fetch(`${process.env.VUE_APP_URL_BACK}/usuario/${this.imagenOid}`,{
+			method: 'PUT',
+			redirect: 'follow',
+			body: JSON.stringify({foto: this.imagenOid+".jpg"}),
+			headers:{
+			Authorization: `Bearer ${localStorage.getItem('token')}`,
+				"Content-Type": "application/json"
+			}
+		})
+		.then(response => response.text())
+		.then(JSON.parse)
+		.catch(error => console.log('error', error));
+
 		this.imagenOid = null;
 		return window.location.reload()
 	},
