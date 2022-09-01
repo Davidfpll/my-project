@@ -146,9 +146,9 @@ export default {
 	if ( secretaria.rol === "administrador" ) window.location = '/administrador';
   },
   mounted() {
+	this.buscarAlumnos()
+	this.buscaClases()
     this.buscarTutores()
-    this.buscarAlumnos()
-    this.buscaClases()
   },
   methods: {
 	async cerrarSession(){
