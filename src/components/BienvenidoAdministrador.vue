@@ -287,16 +287,34 @@ export default {
 
 		this.profesores = __profesores;
 
-		this.alumnos = this.todosAlumnos.map(_alumno => {
-			if ( _alumno.clase ) {
+
+		const __alumnos = []
+        for await(const __alumno of this.todosAlumnos) {
+
+			if ( __alumno.clase ) {
 				const __clase = this.todasClases.find(_clase => {
-					return _clase._id === _alumno.clase
+					return _clase._id === __alumno.clase
 				})
-				if ( __clase) _alumno.nombreClase = __clase.nombre
+				if ( __clase) __alumno.nombreClase = __clase.nombre
 			}
-				
-			return _alumno
-		})
+
+			if ( __alumno.foto ) {
+				const foto = await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${__alumno._id}`,{
+					method: 'GET',
+					redirect: 'follow'
+				})
+				.then(response => response.blob())
+				.then(myBlob => URL.createObjectURL(myBlob))
+				.catch(error => console.log('error', error));
+
+				__alumnos.push({...__alumno, foto: foto})
+			} else {
+				__alumnos.push({...__alumno})
+			}		  
+          
+        }
+
+		this.alumnos = __alumnos
 	},
 	async editarProfesor(profesor){
 		this.anadiendoProfesor = true;
