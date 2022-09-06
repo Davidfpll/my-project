@@ -34,7 +34,7 @@
 				<label class="column">
 					<span>Clases</span>
 					<select multiple v-model="profesor.clases">
-						<option v-for="clase in this.clases" :key="clase._id" :value="clase._id">{{clase.nombre}}</option>
+						<option v-for="clase in this.todasClases" :key="clase._id" :value="clase._id">{{clase.nombre}}</option>
 					</select>
 				</label>
 				<div>
@@ -44,7 +44,7 @@
 			</div>
 		</div>
 	</div>
-	<input type="file" @change="subirFoto" ref="file" style="display: none;" />
+	<input type="file" @change="subirFotoProfesor" ref="fileProfesor" style="display: none;" />
 	<div class="overflow">
 		<table class="table">
 		<thead>
@@ -90,7 +90,7 @@
 				<label class="column">
 				<span>Alumnos</span>
 				<select multiple v-model="clase.alumnos">
-					<option v-for="alumno in this.alumnos" :key="alumno._id" :value="alumno._id">{{alumno.nombre}} {{alumno.apellidos[0]}} {{alumno.apellidos[1]}}</option>
+					<option v-for="_alumno in this.todosAlumnos" :key="_alumno._id" :value="_alumno._id">{{_alumno.nombre}} {{_alumno.apellidos[0]}} {{_alumno.apellidos[1]}}</option>
 				</select>
 			</label>
 				<div>
@@ -112,10 +112,72 @@
 		<tbody>
 			<tr v-for="clase in clases" :key="clase._id">
 			<td>{{clase.nombre}}</td>
-			<td><span v-for="alumno in clase.alumnosNombres" :key="alumno">{{alumno}}<br/></span></td>
+			<td><span v-for="_alumno in clase.alumnosNombres" :key="_alumno">{{_alumno}}<br/></span></td>
 			<td>
 				<button class="btn btn-primary" @click="editarClase({...clase, alumnos: [...clase.alumnos]})">🖊 Editar</button>
 				<button class="btn btn-danger" @click="eliminarClase(clase._id)">❌ Eliminar</button>
+			</td>
+			</tr>
+		</tbody>
+		</table>
+	</div>
+	<h4>Alumnos</h4>
+	<div>
+		<span v-if="anadiendoAlumno === false">
+			<button class="anadir btn btn-primary" style="width:200px;" @click="anadirAlumno()">➕ Añadir Alumno</button>
+		</span>
+		<div v-else class="center">
+			<div class="column">
+				<input name="_id" type="hidden" v-model="alumno._id"/>
+				<label class="column">
+					<span>Nombre</span>
+					<input name="nombre" type="text" v-model="alumno.nombre"/>
+				</label>
+				<label class="column">
+					<span>Primer Apellido</span>
+					<input name="apellidos[0]" type="text" v-model="alumno.apellidos[0]"/>
+				</label>
+				<label class="column">
+					<span>Segundo Apellido</span>
+					<input name="apellidos[1]" type="text" v-model="alumno.apellidos[1]"/>
+				</label>
+				<label class="column">
+					<span>Clases</span>
+					<select multiple v-model="alumno.clases">
+						<option v-for="clase in this.clases" :key="clase._id" :value="clase._id">{{clase.nombre}}</option>
+					</select>
+				</label>
+				<div>
+					<button class="anadir btn btn-danger" style="width:200px;" @click="anadirAlumno(false)">Cancelar</button>
+					<button class="anadir btn btn-primary" style="width:200px;" @click="anadirAlumno(true)">Guardar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<input type="file" @change="subirFotoAlumno" ref="file" style="display: none;" />
+	<div class="overflow">
+		<table class="table">
+		<thead>
+			<tr>
+			<th>Foto</th>
+			<th>Nombre</th>
+			<th>Primer Apellido</th>
+			<th>Segundo Apellido</th>
+			<th>Clase</th>
+			<th>Acciones</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr v-for="alumno in alumnos" :key="alumno._id">
+			<td><img width="150" v-if="!!alumno.foto" :src="alumno.foto"></td>
+			<td>{{alumno.nombre}}</td>
+			<td>{{alumno.apellidos[0]}}</td>
+			<td>{{alumno.apellidos[1]}}</td>
+			<td>{{alumno.nombreClase}}<br/></td>
+			<td>
+				<button class="btn btn-primary" @click="editarAlumno({...alumno, apellidos: [...alumno.apellidos]})">🖊 Editar</button>
+				<button class="btn btn-warning" @click="cambiarImagenAlumno(alumno._id)">📷 Foto</button>
+				<button class="btn btn-danger" @click="eliminarAlumno(alumno._id)">❌ Eliminar</button>
 			</td>
 			</tr>
 		</tbody>
@@ -129,7 +191,11 @@ export default {
   name: 'BienvenidoAdministrador',
   data: () => {
     const aministrador = JSON.parse(localStorage.getItem('usuario'));
-    return { 
+
+    return {
+		todosProfesores: [],
+		todasClases: [],
+		todosAlumnos: [],
 		aministrador,
 		alumnos: [],
 		clase: {},
@@ -139,18 +205,48 @@ export default {
 		profesores: [],
 		anadiendoProfesor: false,
 		imagenOid: null,
+		alumno: {},
+		anadiendoAlumno: false
     }
   },
+
   beforeMount(){
 	const administrador = JSON.parse(localStorage.getItem('usuario'));
 	if ( administrador.rol === "tutor" ) window.location = '/usuario';
 	if ( administrador.rol === "secretaria" ) window.location = '/secretaria';
 	// if ( administrador.rol === "administrador" ) window.location = '/administrador';	
   },
-  mounted() {
-	this.buscarAlumnos()
-	this.buscaClases()
-    this.buscarTutores()
+  async mounted() {
+	const alumnos = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos`,{
+		method: 'GET',
+		redirect: 'follow'
+	})
+	.then(response => response.text())
+	.then(JSON.parse)
+	.catch(error => console.log('error', error));
+
+	const profesores = await fetch(`${process.env.VUE_APP_URL_BACK}/usuario`,{
+		method: 'GET',
+		redirect: 'follow'
+	})
+	.then(response => response.text())
+	.then(JSON.parse)
+	.catch(error => console.log('error', error));
+
+	const clases = await fetch(`${process.env.VUE_APP_URL_BACK}/clase`,{
+		method: 'GET',
+		redirect: 'follow'
+	})
+	.then(response => response.text())
+	.then(JSON.parse)
+	.catch(error => console.log('error', error));
+
+
+	this.todosAlumnos = alumnos
+	this.todasClases = clases
+    this.todosProfesores = profesores
+
+	this.completarRelaciones()
   },
   methods: {
 	async cerrarSession(){
@@ -158,27 +254,17 @@ export default {
 		localStorage.removeItem('token')
 		return window.location = '/'
 	},
-	async buscarAlumnos(){
-		const alumnos = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos`,{
-			method: 'GET',
-			redirect: 'follow'
-		})
-        .then(response => response.text())
-        .then(JSON.parse)
-        .catch(error => console.log('error', error));
+	async completarRelaciones(){
+		this.clases = this.todasClases.map(_clase => {
+			_clase.alumnosNombres = _clase.alumnos.map(_alumno =>{
+				const alumno = this.todosAlumnos.find(__alumno => __alumno._id === _alumno);
+				if (alumno) return alumno.nombre + ' '+ (alumno.apellidos.length ? alumno.apellidos[0] : '')
+				return ''
+			})
+			return {..._clase}
+		});
 
-		this.alumnos = alumnos
-	},
-	async buscarTutores(){
-		const profesores = await fetch(`${process.env.VUE_APP_URL_BACK}/usuario`,{
-			method: 'GET',
-			redirect: 'follow'
-		})
-        .then(response => response.text())
-        .then(JSON.parse)
-        .catch(error => console.log('error', error));
-
-		const _profesores = profesores.filter(_profesor => _profesor.rol === 'tutor')
+		const _profesores = this.todosProfesores.filter(_profesor => _profesor.rol === 'tutor')
 
 		const __profesores = []
         for await(const _profesor of _profesores) {
@@ -199,23 +285,17 @@ export default {
           
         }
 
-		this.profesores = __profesores
-	},
-	async buscaClases (){
-		const clases = await fetch(`${process.env.VUE_APP_URL_BACK}/clase`,{
-			method: 'GET',
-			redirect: 'follow'
-		})
-        .then(response => response.text())
-        .then(JSON.parse)
-        .catch(error => console.log('error', error));
+		this.profesores = __profesores;
 
-		this.clases = clases.map(_clase => { 
-			_clase.alumnosNombres = _clase.alumnos.map(_alumno =>{
-				const alumno = this.alumnos.find(__alumno => __alumno._id === _alumno);
-				return alumno.nombre + ' '+ (alumno.apellidos.length ? alumno.apellidos[0] : '')
-			})
-			return {..._clase}
+		this.alumnos = this.todosAlumnos.map(_alumno => {
+			if ( _alumno.clase ) {
+				const __clase = this.todasClases.find(_clase => {
+					return _clase._id === _alumno.clase
+				})
+				if ( __clase) _alumno.nombreClase = __clase.nombre
+			}
+				
+			return _alumno
 		})
 	},
 	async editarProfesor(profesor){
@@ -294,9 +374,9 @@ export default {
 	},
 	cambiarImagen(oid){
 		this.imagenOid = oid
-		this.$refs.file.click()
+		this.$refs.fileProfesor.click()
 	},
-	async subirFoto(event){
+	async subirFotoProfesor(event){
 
 		const formData = new FormData();
 		formData.append("archivo", event.target.files[0]);
@@ -391,6 +471,105 @@ export default {
 		
 	},
 
+	async editarAlumno(alumno){
+		this.anadiendoAlumno = true;
+		this.alumno = alumno
+	},
+	async anadirAlumno(guardar){
+		this.anadiendoAlumno = !this.anadiendoAlumno
+		if ( guardar ){
+
+			if ( !this.alumno.nombre ) return alert('Debe rellenar toda la informacion')
+
+			const body = {...this.alumno,}
+
+			if ( this.alumno._id ){
+				const editado = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos/${this.alumno._id}`,{
+					method: 'PUT',
+					redirect: 'follow',
+					body: JSON.stringify({...body}),
+					headers:{
+					Authorization: `Bearer ${localStorage.getItem('token')}`,
+						"Content-Type": "application/json"
+					}
+				})
+				.then(response => response.text())
+				.then(JSON.parse)
+				.catch(error => console.log('error', error));
+
+				if ( editado ) return window.location.reload()
+			} else {
+				// crear
+				const creado = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos`,{
+					method: 'POST',
+					redirect: 'follow',
+					body: JSON.stringify({...body}),
+					headers:{
+					Authorization: `Bearer ${localStorage.getItem('token')}`,
+						"Content-Type": "application/json"
+					}
+				})
+				.then(response => response.text())
+				.then(JSON.parse)
+				.catch(error => console.log('error', error));
+
+				if ( creado ) return window.location.reload()
+			}
+
+
+		}
+		this.alumno = {
+			apellidos:[],
+		}
+	},
+	async eliminarAlumno(alumnoOid){
+		const eliminado = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos/${alumnoOid}`,{
+			method: 'DELETE',
+			redirect: 'follow',
+			headers:{
+			Authorization: `Bearer ${localStorage.getItem('token')}`,
+			"Content-Type": "application/json"
+			}
+		})
+		.then(response => response.text())
+		.then(JSON.parse)
+		.catch(error => console.log('error', error));
+
+		if ( eliminado ) return window.location.reload()
+	},
+	cambiarImagenAlumno(oid){
+		this.imagenOid = oid
+		this.$refs.file.click()
+	},
+	async subirFotoAlumno(event){
+
+		const formData = new FormData();
+		formData.append("archivo", event.target.files[0]);
+        // formData.append('archivo', event.target.files[0]);
+        const headers = {
+			method: 'POST',
+			body: formData,
+			redirect: 'follow'
+		};
+
+		await fetch(`${process.env.VUE_APP_URL_BACK}/imagenes/${this.imagenOid}`, headers);
+		
+		await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos/${this.imagenOid}`,{
+			method: 'PUT',
+			redirect: 'follow',
+			body: JSON.stringify({foto: this.imagenOid+".jpg"}),
+			headers:{
+			Authorization: `Bearer ${localStorage.getItem('token')}`,
+				"Content-Type": "application/json"
+			}
+		})
+		.then(response => response.text())
+		.then(JSON.parse)
+		.catch(error => console.log('error', error));
+
+		this.imagenOid = null;
+		return window.location.reload()
+	},
 
   }
 
