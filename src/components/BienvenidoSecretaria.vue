@@ -143,7 +143,7 @@
 				</label>
 				<label class="column">
 					<span>Clases</span>
-					<select multiple v-model="alumno.clases">
+					<select v-model="alumno.clase">
 						<option v-for="clase in this.clases" :key="clase._id" :value="clase._id">{{clase.nombre}}</option>
 					</select>
 				</label>
