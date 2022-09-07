@@ -211,10 +211,10 @@ export default {
   },
 
   beforeMount(){
-	const administrador = JSON.parse(localStorage.getItem('usuario'));
-	if ( administrador.rol === "tutor" ) window.location = '/usuario';
-	if ( administrador.rol === "secretaria" ) window.location = '/secretaria';
-	// if ( administrador.rol === "administrador" ) window.location = '/administrador';	
+	const secretaria = JSON.parse(localStorage.getItem('usuario'));
+	if ( secretaria.rol === "tutor" ) window.location = '/usuario';
+	// if ( secretaria.rol === "secretaria" ) window.location = '/secretaria';
+	if ( secretaria.rol === "administrador" ) window.location = '/administrador';	
   },
   async mounted() {
 	const alumnos = await fetch(`${process.env.VUE_APP_URL_BACK}/alumnos`,{
